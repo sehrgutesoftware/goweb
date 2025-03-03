@@ -8,7 +8,7 @@ import (
 
 var (
 	// ErrGeneric indicates that an unspecified error occurs.
-	ErrGeneric = NewError("generic", "generic error", http.StatusInternalServerError)
+	ErrGeneric = NewMaskedError("generic", "generic error", http.StatusInternalServerError)
 )
 
 // ErrorCoder defines the interface of an error that has a unique code.
@@ -29,6 +29,12 @@ type APIError interface {
 	ErrorDetail() any // ErrorDetail returns optional related data
 }
 
+// ErrorMasker specfifies whether error details should be hidden when sending
+// the error to the client.
+type ErrorMasker interface {
+	MaskError() bool
+}
+
 // codeError is an error with a unique code, an HTTP status and optional data.
 type codeError struct {
 	// err is the underlying error that caused this error, if any.
@@ -40,6 +46,8 @@ type codeError struct {
 	statusCode int
 	// data is optional data associated with the error.
 	data any
+	// masked specifies whether the error details should be hidden.
+	masked bool
 }
 
 // Error returns the error message.
@@ -62,12 +70,28 @@ func (e *codeError) ErrorDetail() any {
 	return e.data
 }
 
+// MaskError returns whether the error details should be hidden.
+func (e *codeError) MaskError() bool {
+	return e.masked
+}
+
 // NewError creates a new [codeError] with given code, message and HTTP status.
 func NewError(code, message string, status int) *codeError {
 	return &codeError{
 		err:        errors.New(message),
 		code:       code,
 		statusCode: status,
+		masked:     false,
+	}
+}
+
+// NewMaskedError creates a new [codeError] with the masked flag set.
+func NewMaskedError(code, message string, status int) *codeError {
+	return &codeError{
+		err:        errors.New(message),
+		code:       code,
+		statusCode: status,
+		masked:     true,
 	}
 }
 
@@ -78,6 +102,7 @@ func (e *codeError) Wrap(err error) *codeError {
 		code:       e.code,
 		statusCode: e.statusCode,
 		data:       e.data,
+		masked:     e.masked,
 	}
 }
 
@@ -88,6 +113,7 @@ func (e *codeError) Apply(data any) *codeError {
 		code:       e.code,
 		statusCode: e.statusCode,
 		data:       data,
+		masked:     e.masked,
 	}
 }
 

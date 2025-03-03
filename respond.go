@@ -46,8 +46,10 @@ func RespondError(w http.ResponseWriter, r *http.Request, e error) error {
 	response.Detail = apiError.ErrorDetail()
 	statusCode = apiError.StatusCode()
 
-	if response.Code == ErrGeneric.ErrorCode() {
-		slog.Error("Error response", "error", e)
+	if me, ok := e.(ErrorMasker); ok && me.MaskError() {
+		response.Message = ""
+		response.Detail = nil
+		slog.Error("Error response", "error", apiError)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
