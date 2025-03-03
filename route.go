@@ -1,6 +1,7 @@
 package goweb
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -95,6 +96,27 @@ func (r *Route) register(router *httprouter.Router, prefix string, mw []Middlewa
 	}
 
 	return nil
+}
+
+// Dump returns string representations of the route and its children.
+func (r *Route) Dump() []string {
+	return r.dump("/")
+}
+
+// dump returns string representations of the route and its children.
+func (r *Route) dump(prefix string) []string {
+	path, _ := url.JoinPath(prefix, r.path)
+
+	var routes []string
+	if r.handler != nil {
+		routes = append(routes, fmt.Sprintf("%s %s", r.method, path))
+	}
+
+	for _, child := range r.children {
+		routes = append(routes, child.dump(path)...)
+	}
+
+	return routes
 }
 
 // Middleware is the interface for an HTTP middleware
