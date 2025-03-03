@@ -1,6 +1,8 @@
 package goweb_test
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -35,4 +37,14 @@ func TestItMasksDetailsWhenSendingAnErrorResponse(t *testing.T) {
 	assert.Equal(t, w.Code, http.StatusTeapot)
 	assert.Equal(t, w.Header().Get("Content-Type"), "application/json")
 	assert.JSONEq(t, `{"code":"test:code","detail":null,"message":""}`, w.Body.String())
+}
+
+func TestItMasksDetailsWhenPassingAGenericError(t *testing.T) {
+	e := errors.New("this should be hidden")
+
+	w := httptest.NewRecorder()
+	goweb.RespondError(w, nil, e)
+	assert.Equal(t, w.Code, goweb.ErrGeneric.StatusCode())
+	assert.Equal(t, w.Header().Get("Content-Type"), "application/json")
+	assert.JSONEq(t, fmt.Sprintf(`{"code":"%s","detail":null,"message":""}`, goweb.ErrGeneric.ErrorCode()), w.Body.String())
 }

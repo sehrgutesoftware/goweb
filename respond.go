@@ -46,7 +46,7 @@ func RespondError(w http.ResponseWriter, r *http.Request, e error) error {
 	response.Detail = apiError.ErrorDetail()
 	statusCode = apiError.StatusCode()
 
-	if me, ok := e.(ErrorMasker); ok && me.MaskError() {
+	if me, ok := apiError.(ErrorMasker); ok && me.MaskError() {
 		response.Message = ""
 		response.Detail = nil
 		slog.Error("Error response", "error", apiError)
