@@ -9,18 +9,6 @@ import (
 var (
 	// ErrGeneric indicates that an unspecified error occurs.
 	ErrGeneric = NewError("generic", "generic error", http.StatusInternalServerError)
-	// ErrNotAuthenticated indicates that the user is not authenticated.
-	ErrNotAuthenticated = NewError("unauthorized", "unauthorized", http.StatusUnauthorized)
-	// ErrNotAuthorized indicates that the user is authenticated, but not allowed to perform the requested operation.
-	ErrNotAuthorized = NewError("forbidden", "forbidden", http.StatusForbidden)
-	// ErrDecode indicates that the request body could not be decoded.
-	ErrDecode = NewError("bad_encoding", "can't decode request body", http.StatusBadRequest)
-	// ErrInvalidEntity indicates that the request body could be decoded, but the data is invalid.
-	ErrInvalidEntity = NewError("invalid_entity", "entity validation failed", http.StatusUnprocessableEntity)
-	// ErrInvalidQuery indicates that the query parameters are invalid.
-	ErrInvalidQuery = NewError("invalid_query", "invalid query parameters", http.StatusBadRequest)
-	// ErrNotFound indicates that the requested resource could not be found.
-	ErrNotFound = NewError("not_found", "not found", http.StatusNotFound)
 )
 
 // ErrorCoder defines the interface of an error that has a unique code.
