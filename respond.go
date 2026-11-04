@@ -1,6 +1,7 @@
 package goweb
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -9,25 +10,18 @@ import (
 
 // Respond to an HTTP request with a json payload.
 func Respond(w http.ResponseWriter, r *http.Request, data any) error {
-	_ = r // Request can be used in the future to check the Accept header
-
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(data)
 
-	if err != nil {
-		slog.Error("Failed to send JSON response", "error", err, "data", data)
-	}
-
-	return err
+	return writeJSON(requestContext(r), w, data)
 }
 
 // RespondError sends a JSON error response to the client.
 //
 // If the error fulfills [APIError], it will be used to generate the response.
-// Otherwise, a generic error response will be sent. If the error code is
-// [ErrGeneric], the error will be logged.
+// Otherwise, a generic error response will be sent. If the error is masked
+// (see [ErrorMasker]), it will be logged with the request's context.
 func RespondError(w http.ResponseWriter, r *http.Request, e error) error {
-	_ = r // Request can be used in the future to check the Accept header
+	ctx := requestContext(r)
 
 	var apiError APIError
 	if ok := errors.As(e, &apiError); !ok {
@@ -49,16 +43,36 @@ func RespondError(w http.ResponseWriter, r *http.Request, e error) error {
 	if me, ok := apiError.(ErrorMasker); ok && me.MaskError() {
 		response.Message = ""
 		response.Detail = nil
-		slog.Error("Error response", "error", apiError)
+		slog.ErrorContext(ctx, "error response", slog.Any("error", apiError))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	err := json.NewEncoder(w).Encode(response)
 
+	return writeJSON(ctx, w, response)
+}
+
+// writeJSON encodes data before writing it so that encoding errors (a bug)
+// can be told apart from write errors (usually a client that went away).
+func writeJSON(ctx context.Context, w http.ResponseWriter, data any) error {
+	body, err := json.Marshal(data)
 	if err != nil {
-		slog.Error("Failed to send error response as JSON", "error", err, "data", response)
+		slog.ErrorContext(ctx, "failed to encode JSON response", slog.Any("error", err))
+		return err
 	}
 
-	return err
+	if _, err := w.Write(append(body, '\n')); err != nil {
+		slog.DebugContext(ctx, "failed to write JSON response", slog.Any("error", err))
+		return err
+	}
+
+	return nil
+}
+
+func requestContext(r *http.Request) context.Context {
+	if r == nil {
+		return context.Background()
+	}
+
+	return r.Context()
 }
