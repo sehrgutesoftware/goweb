@@ -84,7 +84,7 @@ func (r *Route) register(router *httprouter.Router, prefix string, mw []Middlewa
 		for i := len(mw) - 1; i >= 0; i-- {
 			handler = mw[i].Handler(handler)
 		}
-		router.Handler(r.method, path, handler)
+		router.Handler(r.method, path, withPattern(r.method+" "+path, handler))
 	}
 
 	// Recursively register the route's children.
@@ -96,6 +96,16 @@ func (r *Route) register(router *httprouter.Router, prefix string, mw []Middlewa
 	}
 
 	return nil
+}
+
+// withPattern sets [http.Request.Pattern] to the matched route, e.g.
+// "GET /users/:id", before the route's middleware and handler run, like
+// [http.ServeMux] does.
+func withPattern(pattern string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.Pattern = pattern
+		next.ServeHTTP(w, req)
+	})
 }
 
 // Dump returns string representations of the route and its children.
