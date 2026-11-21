@@ -19,7 +19,8 @@ func Respond(w http.ResponseWriter, r *http.Request, data any) error {
 //
 // If the error fulfills [APIError], it will be used to generate the response.
 // Otherwise, a generic error response will be sent. If the error is masked
-// (see [ErrorMasker]), it will be logged with the request's context.
+// (see [ErrorMasker]) or its status code is 500 or above, it will be logged
+// with the request's context.
 func RespondError(w http.ResponseWriter, r *http.Request, e error) error {
 	ctx := requestContext(r)
 
@@ -40,9 +41,14 @@ func RespondError(w http.ResponseWriter, r *http.Request, e error) error {
 	response.Detail = apiError.ErrorDetail()
 	statusCode = apiError.StatusCode()
 
-	if me, ok := apiError.(ErrorMasker); ok && me.MaskError() {
+	me, ok := apiError.(ErrorMasker)
+	masked := ok && me.MaskError()
+	if masked {
 		response.Message = ""
 		response.Detail = nil
+	}
+
+	if masked || statusCode >= http.StatusInternalServerError {
 		slog.ErrorContext(ctx, "error response", slog.Any("error", apiError))
 	}
 

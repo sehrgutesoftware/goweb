@@ -65,7 +65,28 @@ func TestItLogsMaskedErrorsWithTheRequestContext(t *testing.T) {
 	}
 }
 
-func TestItDoesNotLogUnmaskedErrors(t *testing.T) {
+func TestItLogsMaskedClientErrors(t *testing.T) {
+	logs := recordLogs(t)
+
+	goweb.RespondError(httptest.NewRecorder(), nil, goweb.NewMaskedError("test:code", "test message", http.StatusTeapot))
+
+	if assert.Len(t, logs.records, 1) {
+		assert.Equal(t, slog.LevelError, logs.records[0].Level)
+	}
+}
+
+func TestItLogsUnmaskedServerErrors(t *testing.T) {
+	logs := recordLogs(t)
+
+	goweb.RespondError(httptest.NewRecorder(), nil, goweb.NewError("test:code", "test message", http.StatusServiceUnavailable))
+
+	if assert.Len(t, logs.records, 1) {
+		assert.Equal(t, slog.LevelError, logs.records[0].Level)
+		assert.Equal(t, []string{"error"}, attrKeys(logs.records[0]))
+	}
+}
+
+func TestItDoesNotLogUnmaskedClientErrors(t *testing.T) {
 	logs := recordLogs(t)
 
 	goweb.RespondError(httptest.NewRecorder(), nil, goweb.NewError("test:code", "test message", http.StatusTeapot))
