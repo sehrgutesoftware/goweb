@@ -3,6 +3,7 @@ package assertions
 import (
 	"fmt"
 	"reflect"
+	"unicode/utf8"
 
 	"golang.org/x/exp/constraints"
 )
@@ -131,7 +132,8 @@ func errBetweenFloat[T constraints.Float](min, max, actual T) error {
 }
 
 // betweenLen asserts that a string, slice, map, or array has a length within a
-// given range.
+// given range. The length of a string is its number of characters (runes), not
+// bytes.
 type betweenLen struct {
 	lower uint64
 	upper uint64
@@ -155,6 +157,9 @@ func (b *betweenLen) Validate(value any) error {
 	}
 
 	l := uint64(v.Len())
+	if v.Kind() == reflect.String {
+		l = uint64(utf8.RuneCountInString(v.String()))
+	}
 	if l < b.lower || l > b.upper {
 		return errBetweenLen(b.lower, b.upper, l)
 	}
